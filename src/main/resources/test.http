@@ -3,8 +3,8 @@ POST http://localhost:8080/products
 Content-Type: application/json
 
 {
-  "barcode": "123456789",
-  "name": "Milk Gallon",
+  "barcode": "123456",
+  "name": "T-Shirt",
   "frontQuantity": 10,
   "backQuantity": 50,
   "wasteQuantity": 0,
@@ -14,4 +14,28 @@ Content-Type: application/json
 ###
 
 ### Get Product by Barcode
-GET http://localhost:8080/products/barcode/123456789
+GET http://localhost:8080/products/barcode/123456
+
+### Checkout (Sale)
+POST http://localhost:8080/inventory/checkout
+Content-Type: application/json
+
+{"barcode": "123456", "quantity": 1}
+
+### Restock (Back → Front)
+POST http://localhost:8080/inventory/restock
+Content-Type: application/json
+
+{"barcode": "123456", "quantity": 5}
+
+### Log Waste
+POST http://localhost:8080/inventory/waste
+Content-Type: application/json
+
+{"barcode": "123456", "quantity": 2, "location": "FRONT"}
+
+### Get All Waste History
+GET http://localhost:8080/inventory/waste
+
+### Get Waste History by Barcode
+GET http://localhost:8080/inventory/waste/123456
