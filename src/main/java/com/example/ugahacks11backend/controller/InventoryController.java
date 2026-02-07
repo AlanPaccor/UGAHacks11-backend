@@ -1,12 +1,14 @@
 package com.example.ugahacks11backend.controller;
 
 import com.example.ugahacks11backend.dto.TransactionRequest;
+import com.example.ugahacks11backend.model.Transaction;
 import com.example.ugahacks11backend.model.WasteLog;
 import com.example.ugahacks11backend.service.InventoryService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/inventory")
@@ -46,5 +48,25 @@ public class InventoryController {
     @GetMapping("/waste/{barcode}")
     public List<WasteLog> getWasteHistory(@PathVariable String barcode) {
         return inventoryService.getWasteHistory(barcode);
+    }
+
+    // ─── TRANSACTION HISTORY ENDPOINTS ───────────────────────────────
+
+    // GET /inventory/transactions/recent — Last 50 transactions across all products
+    @GetMapping("/transactions/recent")
+    public List<Transaction> getRecentTransactions() {
+        return inventoryService.getRecentTransactions();
+    }
+
+    // GET /inventory/transactions/product/{productId} — All transactions for a product
+    @GetMapping("/transactions/product/{productId}")
+    public List<Transaction> getTransactionsByProduct(@PathVariable UUID productId) {
+        return inventoryService.getTransactionsByProductId(productId);
+    }
+
+    // GET /inventory/transactions/barcode/{barcode} — All transactions by barcode
+    @GetMapping("/transactions/barcode/{barcode}")
+    public List<Transaction> getTransactionsByBarcode(@PathVariable String barcode) {
+        return inventoryService.getTransactionsByBarcode(barcode);
     }
 }

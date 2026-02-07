@@ -2,8 +2,10 @@ package com.example.ugahacks11backend.service;
 
 import com.example.ugahacks11backend.dto.TransactionRequest;
 import com.example.ugahacks11backend.model.Product;
+import com.example.ugahacks11backend.model.Transaction;
 import com.example.ugahacks11backend.model.WasteLog;
 import com.example.ugahacks11backend.repository.ProductRepository;
+import com.example.ugahacks11backend.repository.TransactionRepository;
 import com.example.ugahacks11backend.repository.WasteLogRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,15 +19,17 @@ public class InventoryService {
 
     private final ProductRepository productRepository;
     private final WasteLogRepository wasteLogRepository;
+    private final TransactionRepository transactionRepository;
 
-    public InventoryService(ProductRepository productRepository, WasteLogRepository wasteLogRepository) {
+    public InventoryService(ProductRepository productRepository, 
+                            WasteLogRepository wasteLogRepository,
+                            TransactionRepository transactionRepository) {
         this.productRepository = productRepository;
         this.wasteLogRepository = wasteLogRepository;
+        this.transactionRepository = transactionRepository;
     }
 
     // ─── CHECKOUT (SALE) ─────────────────────────────────────────────
-    // Customer buys an item → decrement FRONT inventory.
-    // Returns alerts if restocking is needed.
     @Transactional
     public Map<String, Object> checkout(TransactionRequest request) {
         Product product = productRepository.findByBarcode(request.getBarcode())
@@ -38,9 +42,20 @@ public class InventoryService {
         product.setFrontQuantity(product.getFrontQuantity() - request.getQuantity());
         productRepository.save(product);
 
-        // Build response with optional alert
+        // 📝 Log transaction
+        Transaction transaction = new Transaction(
+                product.getId(),
+                product.getBarcode(),
+                product.getName(),
+                "CHECKOUT",
+                -request.getQuantity(), // Negative = removed from inventory
+                "FRONT"
+        );
+        transactionRepository.save(transaction);
+
         Map<String, Object> response = new HashMap<>();
         response.put("product", product);
+        response.put("transaction", transaction);
         response.put("message", "Checkout successful. Sold " + request.getQuantity() + " of " + product.getName());
 
         if (product.getFrontQuantity() <= product.getReorderThreshold()) {
@@ -52,7 +67,6 @@ public class InventoryService {
     }
 
     // ─── RESTOCK (BACK → FRONT) ─────────────────────────────────────
-    // Move items from backroom to shelf. Atomic: subtract back, add front.
     @Transactional
     public Map<String, Object> restock(TransactionRequest request) {
         Product product = productRepository.findByBarcode(request.getBarcode())
@@ -66,8 +80,20 @@ public class InventoryService {
         product.setFrontQuantity(product.getFrontQuantity() + request.getQuantity());
         productRepository.save(product);
 
+        // 📝 Log transaction
+        Transaction transaction = new Transaction(
+                product.getId(),
+                product.getBarcode(),
+                product.getName(),
+                "RESTOCK",
+                request.getQuantity(), // Positive = moved to front
+                "BACK_TO_FRONT"
+        );
+        transactionRepository.save(transaction);
+
         Map<String, Object> response = new HashMap<>();
         response.put("product", product);
+        response.put("transaction", transaction);
         response.put("message", "Restocked " + request.getQuantity()
                 + " of '" + product.getName() + "' from Back to Front.");
 
@@ -80,7 +106,6 @@ public class InventoryService {
     }
 
     // ─── WASTE (LOSS / EXPIRED / DAMAGED) ────────────────────────────
-    // Remove items from either FRONT or BACK, and log the waste event.
     @Transactional
     public Map<String, Object> logWaste(TransactionRequest request) {
         Product product = productRepository.findByBarcode(request.getBarcode())
@@ -104,11 +129,10 @@ public class InventoryService {
             default -> throw new RuntimeException("Invalid location: " + location + ". Must be FRONT or BACK.");
         }
 
-        // Increment the total waste counter on the product
         product.setWasteQuantity(product.getWasteQuantity() + request.getQuantity());
         productRepository.save(product);
 
-        // Log the waste event for analytics
+        // Log the waste event
         WasteLog wasteLog = new WasteLog(
                 product.getBarcode(),
                 product.getName(),
@@ -117,9 +141,21 @@ public class InventoryService {
         );
         wasteLogRepository.save(wasteLog);
 
+        // 📝 Log transaction
+        Transaction transaction = new Transaction(
+                product.getId(),
+                product.getBarcode(),
+                product.getName(),
+                "WASTE",
+                -request.getQuantity(), // Negative = lost
+                location
+        );
+        transactionRepository.save(transaction);
+
         Map<String, Object> response = new HashMap<>();
         response.put("product", product);
         response.put("wasteLog", wasteLog);
+        response.put("transaction", transaction);
         response.put("message", "Logged " + request.getQuantity()
                 + " waste for '" + product.getName() + "' from " + location + ".");
 
@@ -133,5 +169,18 @@ public class InventoryService {
 
     public List<WasteLog> getAllWasteHistory() {
         return wasteLogRepository.findAll();
+    }
+
+    // ─── TRANSACTION HISTORY ─────────────────────────────────────────
+    public List<Transaction> getTransactionsByProductId(UUID productId) {
+        return transactionRepository.findByProductIdOrderByCreatedAtDesc(productId);
+    }
+
+    public List<Transaction> getTransactionsByBarcode(String barcode) {
+        return transactionRepository.findByBarcodeOrderByCreatedAtDesc(barcode);
+    }
+
+    public List<Transaction> getRecentTransactions() {
+        return transactionRepository.findTop50ByOrderByCreatedAtDesc();
     }
 }
