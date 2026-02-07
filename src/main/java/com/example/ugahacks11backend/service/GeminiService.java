@@ -45,14 +45,38 @@ public class GeminiService {
         List<Transaction> recentTransactions = transactionRepository.findTop50ByOrderByCreatedAtDesc();
         List<Product> allProducts = productRepository.findAll();
 
+        // Debug logging
+        System.out.println("🔍 DEBUG: Found " + allProducts.size() + " products");
+        System.out.println("🔍 DEBUG: Found " + recentTransactions.size() + " transactions");
+
+        // If no data, return early with a helpful message
+        if (allProducts.isEmpty() && recentTransactions.isEmpty()) {
+            Map<String, Object> result = new HashMap<>();
+            result.put("analysis", "No data available yet. Please add products and perform some transactions (checkout, restock, waste) to generate AI insights.");
+            result.put("timestamp", LocalDateTime.now().toString());
+            result.put("transactionCount", 0);
+            result.put("productCount", 0);
+            return result;
+        }
+
         // Build context for AI
         String context = buildAnalyticsContext(recentTransactions, allProducts);
+        
+        // Debug: Print context being sent
+        System.out.println("📊 DEBUG: Context being sent to Gemini:");
+        System.out.println(context);
+        System.out.println("=" .repeat(80));
 
         // Create the prompt
         String prompt = buildPrompt(context);
 
         // Call Gemini API
         String aiResponse = callGeminiAPI(prompt);
+
+        // Debug: Print AI response
+        System.out.println("🤖 DEBUG: Gemini response:");
+        System.out.println(aiResponse);
+        System.out.println("=" .repeat(80));
 
         // Parse and return structured response
         Map<String, Object> result = new HashMap<>();
@@ -69,53 +93,66 @@ public class GeminiService {
 
         // Summarize transaction data
         context.append("=== TRANSACTION HISTORY ===\n");
-        Map<String, Long> transactionTypes = transactions.stream()
-                .collect(Collectors.groupingBy(Transaction::getTransactionType, Collectors.counting()));
+        
+        if (transactions.isEmpty()) {
+            context.append("No transactions recorded yet.\n");
+        } else {
+            Map<String, Long> transactionTypes = transactions.stream()
+                    .collect(Collectors.groupingBy(Transaction::getTransactionType, Collectors.counting()));
 
-        context.append("Total Transactions: ").append(transactions.size()).append("\n");
-        transactionTypes.forEach((type, count) -> 
-            context.append(type).append(": ").append(count).append("\n")
-        );
+            context.append("Total Transactions: ").append(transactions.size()).append("\n");
+            transactionTypes.forEach((type, count) -> 
+                context.append(type).append(": ").append(count).append("\n")
+            );
 
-        // Top products by activity
-        context.append("\n=== TOP ACTIVE PRODUCTS ===\n");
-        Map<String, Long> productActivity = transactions.stream()
-                .collect(Collectors.groupingBy(Transaction::getProductName, Collectors.counting()));
+            // Top products by activity
+            context.append("\n=== TOP ACTIVE PRODUCTS ===\n");
+            Map<String, Long> productActivity = transactions.stream()
+                    .collect(Collectors.groupingBy(Transaction::getProductName, Collectors.counting()));
 
-        productActivity.entrySet().stream()
-                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
-                .limit(5)
-                .forEach(entry -> context.append(entry.getKey()).append(": ")
-                        .append(entry.getValue()).append(" transactions\n"));
+            productActivity.entrySet().stream()
+                    .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                    .limit(5)
+                    .forEach(entry -> context.append(entry.getKey()).append(": ")
+                            .append(entry.getValue()).append(" transactions\n"));
+        }
 
         // Current inventory status
         context.append("\n=== CURRENT INVENTORY STATUS ===\n");
-        for (Product product : products) {
-            context.append(product.getName())
-                    .append(" - Front: ").append(product.getFrontQuantity())
-                    .append(", Back: ").append(product.getBackQuantity())
-                    .append(", Waste: ").append(product.getWasteQuantity())
-                    .append(", Threshold: ").append(product.getReorderThreshold())
-                    .append("\n");
+        if (products.isEmpty()) {
+            context.append("No products in inventory yet.\n");
+        } else {
+            for (Product product : products) {
+                context.append(product.getName())
+                        .append(" - Front: ").append(product.getFrontQuantity())
+                        .append(", Back: ").append(product.getBackQuantity())
+                        .append(", Waste: ").append(product.getWasteQuantity())
+                        .append(", Threshold: ").append(product.getReorderThreshold())
+                        .append("\n");
+            }
         }
 
         // Calculate waste percentage
         context.append("\n=== WASTE ANALYSIS ===\n");
-        int totalWaste = transactions.stream()
-                .filter(t -> "WASTE".equals(t.getTransactionType()))
-                .mapToInt(t -> Math.abs(t.getQuantity()))
-                .sum();
+        if (transactions.isEmpty()) {
+            context.append("No waste data available yet.\n");
+        } else {
+            int totalWaste = transactions.stream()
+                    .filter(t -> "WASTE".equals(t.getTransactionType()))
+                    .mapToInt(t -> Math.abs(t.getQuantity()))
+                    .sum();
 
-        int totalCheckouts = transactions.stream()
-                .filter(t -> "CHECKOUT".equals(t.getTransactionType()))
-                .mapToInt(t -> Math.abs(t.getQuantity()))
-                .sum();
+            int totalCheckouts = transactions.stream()
+                    .filter(t -> "CHECKOUT".equals(t.getTransactionType()))
+                    .mapToInt(t -> Math.abs(t.getQuantity()))
+                    .sum();
 
-        context.append("Total Waste: ").append(totalWaste).append(" units\n");
-        context.append("Total Sales: ").append(totalCheckouts).append(" units\n");
-        if (totalCheckouts > 0) {
-            double wastePercentage = (totalWaste * 100.0) / (totalWaste + totalCheckouts);
-            context.append("Waste Percentage: ").append(String.format("%.2f", wastePercentage)).append("%\n");
+            context.append("Total Waste: ").append(totalWaste).append(" units\n");
+            context.append("Total Sales: ").append(totalCheckouts).append(" units\n");
+            if (totalCheckouts > 0) {
+                double wastePercentage = (totalWaste * 100.0) / (totalWaste + totalCheckouts);
+                context.append("Waste Percentage: ").append(String.format("%.2f", wastePercentage)).append("%\n");
+            }
         }
 
         return context.toString();
@@ -150,6 +187,10 @@ public class GeminiService {
         ));
 
         String jsonBody = objectMapper.writeValueAsString(requestBody);
+        
+        // Debug: Print request
+        System.out.println("🌐 DEBUG: Calling Gemini API at: " + apiUrl);
+        System.out.println("📤 DEBUG: Request body: " + jsonBody.substring(0, Math.min(200, jsonBody.length())) + "...");
 
         // Build HTTP request
         HttpRequest request = HttpRequest.newBuilder()
@@ -161,18 +202,27 @@ public class GeminiService {
         // Send request
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
+        System.out.println("📥 DEBUG: Response status: " + response.statusCode());
+        System.out.println("📥 DEBUG: Response body: " + response.body().substring(0, Math.min(500, response.body().length())) + "...");
+
         if (response.statusCode() != 200) {
             throw new RuntimeException("Gemini API error: " + response.body());
         }
 
         // Parse response
         JsonNode root = objectMapper.readTree(response.body());
-        return root.path("candidates")
+        String aiText = root.path("candidates")
                 .get(0)
                 .path("content")
                 .path("parts")
                 .get(0)
                 .path("text")
                 .asText();
+        
+        if (aiText == null || aiText.isEmpty()) {
+            throw new RuntimeException("Empty response from Gemini API. Full response: " + response.body());
+        }
+        
+        return aiText;
     }
 }
