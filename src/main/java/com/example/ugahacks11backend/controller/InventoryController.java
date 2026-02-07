@@ -25,6 +25,11 @@ public class InventoryController {
     public Map<String, Object> checkout(@RequestBody TransactionRequest request) {
         return inventoryService.checkout(request);
     }
+    // POST /inventory/receive — Receive shipment from supplier
+    @PostMapping("/receive")
+    public Map<String, Object> receiveShipment(@RequestBody TransactionRequest request) {
+        return inventoryService.receiveShipment(request);
+    }
 
     // POST /inventory/restock — Move from Back → Front
     @PostMapping("/restock")

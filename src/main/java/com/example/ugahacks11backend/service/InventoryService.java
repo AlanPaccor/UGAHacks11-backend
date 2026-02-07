@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class InventoryService {
@@ -182,5 +183,35 @@ public class InventoryService {
 
     public List<Transaction> getRecentTransactions() {
         return transactionRepository.findTop50ByOrderByCreatedAtDesc();
+    }
+
+    // ─── RECEIVE SHIPMENT (ADD TO BACK STOCK) ────────────────────────
+    // This simulates receiving inventory from a supplier
+    @Transactional
+    public Map<String, Object> receiveShipment(TransactionRequest request) {
+        Product product = productRepository.findByBarcode(request.getBarcode())
+                .orElseThrow(() -> new RuntimeException("Product not found: " + request.getBarcode()));
+
+        product.setBackQuantity(product.getBackQuantity() + request.getQuantity());
+        productRepository.save(product);
+
+        // 📝 Log transaction
+        Transaction transaction = new Transaction(
+                product.getId(),
+                product.getBarcode(),
+                product.getName(),
+                "SHIPMENT_RECEIVED",
+                request.getQuantity(), // Positive = added to inventory
+                "BACK"
+        );
+        transactionRepository.save(transaction);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("product", product);
+        response.put("transaction", transaction);
+        response.put("message", "Received shipment: Added " + request.getQuantity()
+                + " of '" + product.getName() + "' to back stock.");
+
+        return response;
     }
 }

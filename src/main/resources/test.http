@@ -39,3 +39,12 @@ GET http://localhost:8080/inventory/waste
 
 ### Get Waste History by Barcode
 GET http://localhost:8080/inventory/waste/123456
+
+### Get Recent Transactions (Dashboard)
+GET http://localhost:8080/inventory/transactions/recent
+
+### Get Transactions by Barcode
+GET http://localhost:8080/inventory/transactions/barcode/123456
+
+### Get Transactions by Product ID
+GET http://localhost:8080/inventory/transactions/product/550e8400-e29b-41d4-a716-446655440000
