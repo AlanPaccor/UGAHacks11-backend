@@ -1,0 +1,17 @@
+### Add Product
+POST http://localhost:8080/products
+Content-Type: application/json
+
+{
+  "barcode": "123456789",
+  "name": "Milk Gallon",
+  "frontQuantity": 10,
+  "backQuantity": 50,
+  "wasteQuantity": 0,
+  "reorderThreshold": 15
+}
+
+###
+
+### Get Product by Barcode
+GET http://localhost:8080/products/barcode/123456789
