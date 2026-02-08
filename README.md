@@ -481,4 +481,4 @@ This backend represents a deep dive into:
 
 ---
 
-**Built for UGAHacks 11** | **Spring Boot Learning Journey** | **Hands-On Implementation**
+**Built for UGAHacks 11** | **Spring Boot Learning Journey** | **Hands-On Implementation**  
