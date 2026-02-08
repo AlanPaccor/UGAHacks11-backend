@@ -35,9 +35,9 @@ public class LayoutSeeder {
             // Using a 1000x1000 coordinate system (0-1000 for both x and y)
             
             int[][] positions = {
-                {100, 200},  // Aisle A1 - left side
-                {100, 400},  // Aisle A2
-                {100, 600},  // Aisle A3
+                {100, 450},  // Aisle A1 - left side
+                {100, 455},  // Aisle A2
+                {100, 460},  // Aisle A3
                 {100, 800},  // Aisle A4
                 {500, 200},  // Aisle B1 - center
                 {500, 400},  // Aisle B2

@@ -163,10 +163,11 @@ public class GeminiService {
                 You are an AI Logistics Manager for a retail inventory system. 
                 Analyze the following inventory and transaction data, then provide:
                 
+                GIVE AN ALERT: Today’s Action Plan (review the data and give a action plan for the day)
+                
                 1. **Key Insights**: What patterns do you see? (2-3 bullet points)
-                2. **Urgent Actions**: What needs immediate attention? (1-2 items)
-                3. **Optimization Tips**: How can they reduce waste and improve stock flow? (2-3 tips)
-                4. **Predictions**: Based on current trends, what should they prepare for?
+                2. **Optimization Tips**: How can they reduce waste and improve stock flow? (2-3 tips)
+                3. **Predictions**: Based on current trends, what should they prepare for?
                 
                 Keep your response concise, actionable, and professional. Use bullet points.
                 

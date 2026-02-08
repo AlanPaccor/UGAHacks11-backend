@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,7 +39,7 @@ public class FloorViewService {
         List<StoreLayout> allLayouts = storeLayoutRepository.findAll();
         
         // Build a map for quick layout lookup
-        Map<java.util.UUID, StoreLayout> layoutMap = allLayouts.stream()
+        Map<UUID, StoreLayout> layoutMap = allLayouts.stream()
                 .collect(Collectors.toMap(StoreLayout::getProductId, layout -> layout));
 
         // Get recent transactions for AI insights
@@ -51,7 +52,7 @@ public class FloorViewService {
 
         // Calculate checkout frequency for high-traffic zone detection
         Map<String, Long> checkoutByProduct = recentTransactions.stream()
-                .filter(t => "CHECKOUT".equals(t.getTransactionType()))
+                .filter(t -> "CHECKOUT".equals(t.getTransactionType()))
                 .collect(Collectors.groupingBy(Transaction::getBarcode, Collectors.counting()));
 
         List<FloorViewDTO> floorView = new ArrayList<>();
